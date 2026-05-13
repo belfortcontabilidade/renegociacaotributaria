@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build and Publish
 
 on:
   push:
@@ -53,14 +53,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trigger Portainer redeploy
-        env:
-          WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+      - name: Done
         run: |
-          if [ -z "$WEBHOOK" ]; then
-            echo "::warning::PORTAINER_WEBHOOK_URL secret nao configurado — pulando redeploy."
-            exit 0
-          fi
-          echo "Acionando webhook do Portainer..."
-          curl -fsSL -X POST "$WEBHOOK"
-          echo "Webhook acionado."
+          echo "Imagem publicada: ${{ steps.meta.outputs.tags }}"
+          echo "Watchtower no servidor fara o pull e o redeploy em ate 30s."

@@ -2,31 +2,48 @@
 
 Landing page estatica servida via Nginx em container Docker.
 
-## Deploy
+## Pipeline de deploy
 
-Pipeline automatico via GitHub Actions:
+```
+git push origin main
+   |
+   v
+GitHub Actions builda a imagem
+   |
+   v
+Push para ghcr.io/belfortcontabilidade/renegociacaotributaria:latest
+   |
+   v
+Watchtower (rodando no servidor) detecta nova imagem em ate 30s
+   |
+   v
+Container e recriado automaticamente
+```
 
-1. Push em `main` dispara o workflow `.github/workflows/deploy.yml`
-2. Imagem e construida e publicada em `ghcr.io/belfortcontabilidade/renegociacaotributaria:latest`
-3. Workflow chama o webhook do Portainer, que faz `pull` da nova imagem e recria o container
+Nao depende de webhook nem de API do Portainer.
 
-### Configuracao inicial
+## Configuracao inicial
 
-**No GitHub** (uma unica vez):
+### 1. Tornar a imagem publica no GHCR
+Apos o primeiro workflow rodar:
+- Acessar https://github.com/belfortcontabilidade?tab=packages
+- Abrir o pacote `renegociacaotributaria` → **Package settings** → Change visibility → **Public**
+- (Se preferir privada, cadastrar credenciais do GHCR no Portainer em *Registries*)
 
-- Em `Settings > Secrets and variables > Actions`, criar o secret `PORTAINER_WEBHOOK_URL` com o webhook gerado pelo Portainer (passo abaixo).
-- Apos o primeiro build, em `Packages > renegociacaotributaria > Package settings`, deixar a visibilidade como `Public` (ou configurar registry credentials no Portainer).
-
-**No Portainer** (uma unica vez):
-
-1. `Stacks > Add stack`
+### 2. Criar a stack no Portainer
+1. **Stacks → Add stack**
 2. Nome: `renegociacaotributaria`
-3. Build method: `Web editor` — colar o conteudo do `docker-compose.yml`
-4. Habilitar **GitOps updates** ou **Re-pull image and redeploy** com webhook
-5. Copiar a URL do webhook gerada e cadastrar no secret `PORTAINER_WEBHOOK_URL` do GitHub
-6. Deploy
+3. Build method: **Web editor** — colar o conteudo do `docker-compose.yml` deste repo
+4. **Deploy the stack**
 
-A partir dai todo `git push origin main` publica em producao.
+A stack inclui dois servicos:
+- `web` — o nginx servindo o HTML na porta `8080`
+- `watchtower` — checa a cada 30s se ha nova imagem `:latest` no GHCR e recria o `web` automaticamente
+
+> Watchtower so atualiza containers com a label `com.centurylinklabs.watchtower.enable=true` (`--label-enable`), entao nao mexe em outros containers do servidor.
+
+### 3. Pronto
+A partir daqui, todo `git push origin main` dispara: build → push GHCR → Watchtower atualiza producao em ~30s.
 
 ## Rodar localmente
 
