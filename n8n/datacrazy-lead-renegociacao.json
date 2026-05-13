@@ -44,19 +44,54 @@
       "name": "DataCrazy - Criar Lead",
       "type": "n8n-nodes-datacrazy.dataCrazy",
       "typeVersion": 1,
-      "position": [720, 320],
+      "position": [720, 240],
       "credentials": {
         "dataCrazyCredentials": {
           "id": "REPLACE_COM_ID_DA_CREDENCIAL",
           "name": "DataCrazy account"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "leads",
+        "operation": "getAll",
+        "options": {
+          "search": "={{ $('Normalizar Payload').item.json.email }}",
+          "take": 1,
+          "skip": 0
+        }
+      },
+      "id": "f8a2c1e0-8888-4a08-9b00-aaaaaaaaaaa8",
+      "name": "DataCrazy - Buscar Lead Existente",
+      "type": "n8n-nodes-datacrazy.dataCrazy",
+      "typeVersion": 1,
+      "position": [960, 480],
+      "credentials": {
+        "dataCrazyCredentials": {
+          "id": "REPLACE_COM_ID_DA_CREDENCIAL",
+          "name": "DataCrazy account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Consolida o leadId vindo de duas origens possiveis:\n// 1) Resposta de POST /leads (criacao bem-sucedida) -> $json.id\n// 2) Resposta de GET /leads?search=email (lead ja existia) -> $json.data[0].id\n\nconst input = $input.first().json;\n\nlet leadId = input.id || input.data?.id;\n\nif (!leadId) {\n  const lista = Array.isArray(input)\n    ? input\n    : (input.data || input.items || input.results || []);\n  if (Array.isArray(lista) && lista.length > 0) {\n    leadId = lista[0]?.id;\n  }\n}\n\nif (!leadId) {\n  throw new Error('Nao foi possivel resolver o leadId. Resposta recebida: ' + JSON.stringify(input));\n}\n\nreturn [{ json: { leadId, fonte: input.id ? 'criado' : 'existente' } }];\n"
+      },
+      "id": "f8a2c1e0-9999-4a09-9b00-aaaaaaaaaaa9",
+      "name": "Resolver leadId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 360]
     },
     {
       "parameters": {
         "resource": "deals",
         "operation": "create",
-        "leadId": "={{ $json.id || $json.data?.id }}",
+        "leadId": "={{ $json.leadId }}",
         "pipelineId": "03430246-2003-43ab-8f6f-c9d8872db651",
         "stageId": "9ec29cb5-f6ff-459d-8eb8-86f673e1f5b1",
         "additionalFields": {}
@@ -65,7 +100,7 @@
       "name": "DataCrazy - Criar Negocio",
       "type": "n8n-nodes-datacrazy.dataCrazy",
       "typeVersion": 1,
-      "position": [960, 320],
+      "position": [1440, 360],
       "credentials": {
         "dataCrazyCredentials": {
           "id": "REPLACE_COM_ID_DA_CREDENCIAL",
@@ -77,14 +112,14 @@
       "parameters": {
         "resource": "annotations",
         "operation": "create",
-        "leadId": "={{ $('DataCrazy - Criar Lead').item.json.id || $('DataCrazy - Criar Lead').item.json.data?.id }}",
+        "leadId": "={{ $('Resolver leadId').item.json.leadId }}",
         "note": "={{ $('Normalizar Payload').item.json.anotacao }}"
       },
       "id": "f8a2c1e0-4444-4a04-9b00-aaaaaaaaaaa4",
       "name": "DataCrazy - Adicionar Anotacao",
       "type": "n8n-nodes-datacrazy.dataCrazy",
       "typeVersion": 1,
-      "position": [1200, 320],
+      "position": [1680, 360],
       "credentials": {
         "dataCrazyCredentials": {
           "id": "REPLACE_COM_ID_DA_CREDENCIAL",
@@ -96,7 +131,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { success: true, leadId: $('DataCrazy - Criar Lead').item.json.id || $('DataCrazy - Criar Lead').item.json.data?.id } }}",
+        "responseBody": "={{ { success: true, leadId: $('Resolver leadId').item.json.leadId, fonte: $('Resolver leadId').item.json.fonte } }}",
         "options": {
           "responseCode": 200
         }
@@ -105,7 +140,7 @@
       "name": "Responder Sucesso",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1440, 320]
+      "position": [1920, 360]
     },
     {
       "parameters": {
@@ -119,7 +154,7 @@
       "name": "Responder Erro",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1200, 520]
+      "position": [1440, 640]
     }
   ],
   "connections": {
@@ -149,16 +184,43 @@
       "main": [
         [
           {
-            "node": "DataCrazy - Criar Negocio",
+            "node": "Resolver leadId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DataCrazy - Buscar Lead Existente",
             "type": "main",
             "index": 0
           }
         ]
-      ],
-      "error": [
+      ]
+    },
+    "DataCrazy - Buscar Lead Existente": {
+      "main": [
+        [
+          {
+            "node": "Resolver leadId",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Responder Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolver leadId": {
+      "main": [
+        [
+          {
+            "node": "DataCrazy - Criar Negocio",
             "type": "main",
             "index": 0
           }
