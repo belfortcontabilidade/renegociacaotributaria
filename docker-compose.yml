@@ -1,17 +1,70 @@
+version: "3.7"
 services:
-  web:
-    image: ghcr.io/belfortcontabilidade/renegociacaotributaria:latest
-    container_name: renegociacaotributaria
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
 
-  watchtower:
-    image: containrrr/watchtower
-    container_name: renegociacaotributaria-watchtower
-    restart: unless-stopped
+## --------------------------- BELFORT --------------------------- ##
+
+  renegociacaotributaria:
+    image: ghcr.io/belfortcontabilidade/renegociacaotributaria:latest
+
+    networks:
+      - BelfortNet ## Nome da rede interna
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+      labels:
+        ## Auto-update via Shepherd (label-based)
+        - shepherd.enable=true
+
+        ## Traefik
+        - traefik.enable=true
+        - traefik.http.routers.renegociacaotributaria.rule=Host(`renegociacao.belfortcontabilidade.com.br`) ## Url publica do site
+        - traefik.http.routers.renegociacaotributaria.entrypoints=websecure
+        - traefik.http.routers.renegociacaotributaria.priority=10
+        - traefik.http.routers.renegociacaotributaria.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.renegociacaotributaria.service=renegociacaotributaria
+        - traefik.http.services.renegociacaotributaria.loadbalancer.server.port=80
+        - traefik.http.services.renegociacaotributaria.loadbalancer.passHostHeader=1
+
+## --------------------------- BELFORT --------------------------- ##
+
+  shepherd:
+    image: mazzolino/shepherd:latest ## Auto-updater para Docker Swarm
+
+    environment:
+      - SLEEP_TIME=30s
+      - FILTER_SERVICES=label=shepherd.enable=true
+      - WITH_REGISTRY_AUTH=true
+      - IMAGE_AUTOCLEAN_LIMIT=10
+      - TZ=America/Sao_Paulo
+
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 30 --label-enable --cleanup --rolling-restart
+
+    networks:
+      - BelfortNet ## Nome da rede interna
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+## --------------------------- BELFORT --------------------------- ##
+
+networks:
+  BelfortNet: ## Nome da rede interna
+    external: true
+    name: BelfortNet ## Nome da rede interna
