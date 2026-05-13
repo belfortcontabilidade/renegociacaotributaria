@@ -1,0 +1,171 @@
+{
+  "name": "Renegociacao Tributaria - Lead -> DataCrazy",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "renegociacao-tributaria",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false,
+          "allowedOrigins": "https://transacaotributaria.automacaogrupobelfort.com.br,https://renegociacaotributaria.automacaogrupobelfort.com.br"
+        }
+      },
+      "id": "f8a2c1e0-1111-4a01-9b00-aaaaaaaaaaa1",
+      "name": "Webhook Formulario",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 320],
+      "webhookId": "renegociacao-tributaria"
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Recebe os campos enviados pelo formulario da landing page\n// (renegociacaotributaria.html) e prepara o payload para o DataCrazy.\n\nconst body = $input.first().json.body || $input.first().json;\n\nconst dividaLabels = {\n  'ate-100k':    'Ate R$ 100 mil',\n  '100k-500k':   'De R$ 100 mil a R$ 500 mil',\n  '500k-1mi':    'De R$ 500 mil a R$ 1 milhao',\n  '1mi-5mi':     'De R$ 1 milhao a R$ 5 milhoes',\n  '5mi-15mi':    'De R$ 5 milhoes a R$ 15 milhoes',\n  '15mi-mais':   'Acima de R$ 15 milhoes',\n};\n\nconst dividaCodigo = (body.divida || '').toString().trim();\nconst dividaLegivel = dividaLabels[dividaCodigo] || dividaCodigo || 'Nao informado';\n\nconst telefoneDigits = (body.whatsapp || '').toString().replace(/\\D/g, '');\nconst telefoneE164 = telefoneDigits\n  ? (telefoneDigits.startsWith('55') ? '+' + telefoneDigits : '+55' + telefoneDigits)\n  : '';\n\nconst origem = (body.origem && body.origem.trim())\n  ? body.origem.trim()\n  : 'Landing Page - Renegociacao Tributaria';\n\nconst utmSource   = (body.utm_source   || '').toString().trim();\nconst utmCampaign = (body.utm_campaign || '').toString().trim();\nconst utmMedium   = (body.utm_medium   || '').toString().trim();\n\nconst anotacaoLinhas = [\n  'Lead capturado pelo formulario da landing page.',\n  '',\n  'Valor da divida tributaria: ' + dividaLegivel,\n  'Segmento da empresa: ' + (body.segmento || 'Nao informado'),\n  '',\n  'Origem: ' + origem,\n  'UTM Source: '   + (utmSource   || '-'),\n  'UTM Campaign: ' + (utmCampaign || '-'),\n  'UTM Medium: '   + (utmMedium   || '-'),\n  '',\n  'Capturado em: ' + (body.timestamp || new Date().toISOString()),\n  'User-Agent: '   + (body.user_agent || '-'),\n];\n\nreturn [{\n  json: {\n    name:    (body.nome    || '').toString().trim(),\n    email:   (body.email   || '').toString().trim(),\n    phone:   telefoneE164 || (body.whatsapp || '').toString().trim(),\n    company: (body.empresa || '').toString().trim(),\n    source:  origem,\n    dividaCodigo,\n    dividaLegivel,\n    segmento: (body.segmento || '').toString().trim(),\n    utmSource,\n    utmCampaign,\n    utmMedium,\n    anotacao: anotacaoLinhas.join('\\n'),\n    capturadoEm: body.timestamp || new Date().toISOString(),\n  },\n}];\n"
+      },
+      "id": "f8a2c1e0-2222-4a02-9b00-aaaaaaaaaaa2",
+      "name": "Normalizar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 320]
+    },
+    {
+      "parameters": {
+        "resource": "leads",
+        "operation": "create",
+        "name": "={{ $json.name }}",
+        "email": "={{ $json.email }}",
+        "phone": "={{ $json.phone }}",
+        "company": "={{ $json.company }}",
+        "source": "={{ $json.source }}",
+        "additionalFields": {}
+      },
+      "id": "f8a2c1e0-3333-4a03-9b00-aaaaaaaaaaa3",
+      "name": "DataCrazy - Criar Lead",
+      "type": "n8n-nodes-datacrazy.dataCrazy",
+      "typeVersion": 1,
+      "position": [720, 320],
+      "credentials": {
+        "dataCrazyCredentials": {
+          "id": "REPLACE_COM_ID_DA_CREDENCIAL",
+          "name": "DataCrazy account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "annotations",
+        "operation": "create",
+        "leadId": "={{ $json.id || $json.data?.id }}",
+        "note": "={{ $('Normalizar Payload').item.json.anotacao }}"
+      },
+      "id": "f8a2c1e0-4444-4a04-9b00-aaaaaaaaaaa4",
+      "name": "DataCrazy - Adicionar Anotacao",
+      "type": "n8n-nodes-datacrazy.dataCrazy",
+      "typeVersion": 1,
+      "position": [960, 320],
+      "credentials": {
+        "dataCrazyCredentials": {
+          "id": "REPLACE_COM_ID_DA_CREDENCIAL",
+          "name": "DataCrazy account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, leadId: $('DataCrazy - Criar Lead').item.json.id || $('DataCrazy - Criar Lead').item.json.data?.id } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "f8a2c1e0-5555-4a05-9b00-aaaaaaaaaaa5",
+      "name": "Responder Sucesso",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: $json.error?.message || 'Erro ao processar lead' } }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "f8a2c1e0-6666-4a06-9b00-aaaaaaaaaaa6",
+      "name": "Responder Erro",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 520]
+    }
+  ],
+  "connections": {
+    "Webhook Formulario": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Payload": {
+      "main": [
+        [
+          {
+            "node": "DataCrazy - Criar Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DataCrazy - Criar Lead": {
+      "main": [
+        [
+          {
+            "node": "DataCrazy - Adicionar Anotacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Responder Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DataCrazy - Adicionar Anotacao": {
+      "main": [
+        [
+          {
+            "node": "Responder Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    { "name": "renegociacao-tributaria" },
+    { "name": "datacrazy" },
+    { "name": "landing-page" }
+  ]
+}
