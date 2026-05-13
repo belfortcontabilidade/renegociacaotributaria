@@ -1,0 +1,77 @@
+{
+  "name": "DataCrazy - Listar Estagios do Pipeline",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b1a2c3d4-1111-4a01-9b00-bbbbbbbbbbb1",
+      "name": "Disparar Manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "resource": "pipelines",
+        "operation": "getStages",
+        "pipelineId": "03430246-2003-43ab-8f6f-c9d8872db651"
+      },
+      "id": "b1a2c3d4-2222-4a02-9b00-bbbbbbbbbbb2",
+      "name": "DataCrazy - Listar Estagios",
+      "type": "n8n-nodes-datacrazy.dataCrazy",
+      "typeVersion": 1,
+      "position": [480, 320],
+      "credentials": {
+        "dataCrazyCredentials": {
+          "id": "REPLACE_COM_ID_DA_CREDENCIAL",
+          "name": "DataCrazy account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Achata a resposta para uma linha por estagio,\n// destacando id + name + posicao para facilitar a copia.\n\nconst input = $input.first().json;\nconst lista = Array.isArray(input)\n  ? input\n  : (input.data || input.stages || input.items || []);\n\nreturn lista.map((stage, idx) => ({\n  json: {\n    posicao: stage.order ?? stage.position ?? idx + 1,\n    id: stage.id,\n    name: stage.name,\n    pipelineId: stage.pipelineId || stage.pipeline?.id,\n    raw: stage,\n  },\n}));\n"
+      },
+      "id": "b1a2c3d4-3333-4a03-9b00-bbbbbbbbbbb3",
+      "name": "Formatar Saida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 320]
+    }
+  ],
+  "connections": {
+    "Disparar Manualmente": {
+      "main": [
+        [
+          {
+            "node": "DataCrazy - Listar Estagios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DataCrazy - Listar Estagios": {
+      "main": [
+        [
+          {
+            "node": "Formatar Saida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    { "name": "datacrazy" },
+    { "name": "helper" }
+  ]
+}

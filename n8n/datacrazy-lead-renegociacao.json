@@ -54,16 +54,37 @@
     },
     {
       "parameters": {
-        "resource": "annotations",
+        "resource": "deals",
         "operation": "create",
         "leadId": "={{ $json.id || $json.data?.id }}",
+        "pipelineId": "03430246-2003-43ab-8f6f-c9d8872db651",
+        "stageId": "9ec29cb5-f6ff-459d-8eb8-86f673e1f5b1",
+        "additionalFields": {}
+      },
+      "id": "f8a2c1e0-7777-4a07-9b00-aaaaaaaaaaa7",
+      "name": "DataCrazy - Criar Negocio",
+      "type": "n8n-nodes-datacrazy.dataCrazy",
+      "typeVersion": 1,
+      "position": [960, 320],
+      "credentials": {
+        "dataCrazyCredentials": {
+          "id": "REPLACE_COM_ID_DA_CREDENCIAL",
+          "name": "DataCrazy account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "annotations",
+        "operation": "create",
+        "leadId": "={{ $('DataCrazy - Criar Lead').item.json.id || $('DataCrazy - Criar Lead').item.json.data?.id }}",
         "note": "={{ $('Normalizar Payload').item.json.anotacao }}"
       },
       "id": "f8a2c1e0-4444-4a04-9b00-aaaaaaaaaaa4",
       "name": "DataCrazy - Adicionar Anotacao",
       "type": "n8n-nodes-datacrazy.dataCrazy",
       "typeVersion": 1,
-      "position": [960, 320],
+      "position": [1200, 320],
       "credentials": {
         "dataCrazyCredentials": {
           "id": "REPLACE_COM_ID_DA_CREDENCIAL",
@@ -84,7 +105,7 @@
       "name": "Responder Sucesso",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1200, 320]
+      "position": [1440, 320]
     },
     {
       "parameters": {
@@ -98,7 +119,7 @@
       "name": "Responder Erro",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [960, 520]
+      "position": [1200, 520]
     }
   ],
   "connections": {
@@ -128,7 +149,7 @@
       "main": [
         [
           {
-            "node": "DataCrazy - Adicionar Anotacao",
+            "node": "DataCrazy - Criar Negocio",
             "type": "main",
             "index": 0
           }
@@ -138,6 +159,17 @@
         [
           {
             "node": "Responder Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DataCrazy - Criar Negocio": {
+      "main": [
+        [
+          {
+            "node": "DataCrazy - Adicionar Anotacao",
             "type": "main",
             "index": 0
           }

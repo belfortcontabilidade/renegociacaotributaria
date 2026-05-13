@@ -1,0 +1,119 @@
+{
+  "name": "DataCrazy - Listar Campos Adicionais (Lead + Negocio)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c2b3d4e5-1111-4a01-9b00-ccccccccccc1",
+      "name": "Disparar Manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "resource": "additionalFields",
+        "operation": "getAll",
+        "scope": "lead",
+        "options": {
+          "skip": 0,
+          "take": 500
+        }
+      },
+      "id": "c2b3d4e5-2222-4a02-9b00-ccccccccccc2",
+      "name": "Campos Adicionais - Lead",
+      "type": "n8n-nodes-datacrazy.dataCrazy",
+      "typeVersion": 1,
+      "position": [480, 200],
+      "credentials": {
+        "dataCrazyCredentials": {
+          "id": "REPLACE_COM_ID_DA_CREDENCIAL",
+          "name": "DataCrazy account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "additionalFields",
+        "operation": "getAll",
+        "scope": "deal",
+        "options": {
+          "skip": 0,
+          "take": 500
+        }
+      },
+      "id": "c2b3d4e5-3333-4a03-9b00-ccccccccccc3",
+      "name": "Campos Adicionais - Negocio",
+      "type": "n8n-nodes-datacrazy.dataCrazy",
+      "typeVersion": 1,
+      "position": [480, 440],
+      "credentials": {
+        "dataCrazyCredentials": {
+          "id": "REPLACE_COM_ID_DA_CREDENCIAL",
+          "name": "DataCrazy account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Junta os campos adicionais de Lead e Negocio em uma unica saida\n// com colunas estaveis (escopo, id, name, type, options...) para copia.\n\nfunction extrair(resposta) {\n  if (!resposta) return [];\n  if (Array.isArray(resposta)) return resposta;\n  return resposta.data || resposta.items || resposta.results || [];\n}\n\nfunction normalizar(campo, escopo) {\n  return {\n    escopo,\n    id: campo.id,\n    name: campo.name,\n    label: campo.label || campo.name,\n    type: campo.type || campo.fieldType,\n    required: campo.required ?? campo.isRequired ?? false,\n    options: campo.options || campo.values || campo.choices || null,\n    raw: campo,\n  };\n}\n\nconst leadResp = $('Campos Adicionais - Lead').first()?.json;\nconst dealResp = $('Campos Adicionais - Negocio').first()?.json;\n\nconst leadFields = extrair(leadResp).map((c) => normalizar(c, 'lead'));\nconst dealFields = extrair(dealResp).map((c) => normalizar(c, 'deal'));\n\nconst todos = [...leadFields, ...dealFields];\n\n// Se nao houver nenhum campo, retorna um item indicativo\nif (todos.length === 0) {\n  return [{\n    json: {\n      aviso: 'Nenhum campo adicional cadastrado no DataCrazy.',\n      leadRaw: leadResp,\n      dealRaw: dealResp,\n    },\n  }];\n}\n\nreturn todos.map((item) => ({ json: item }));\n"
+      },
+      "id": "c2b3d4e5-4444-4a04-9b00-ccccccccccc4",
+      "name": "Formatar Saida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 320]
+    }
+  ],
+  "connections": {
+    "Disparar Manualmente": {
+      "main": [
+        [
+          {
+            "node": "Campos Adicionais - Lead",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Campos Adicionais - Negocio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos Adicionais - Lead": {
+      "main": [
+        [
+          {
+            "node": "Formatar Saida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos Adicionais - Negocio": {
+      "main": [
+        [
+          {
+            "node": "Formatar Saida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    { "name": "datacrazy" },
+    { "name": "helper" }
+  ]
+}
