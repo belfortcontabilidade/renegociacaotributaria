@@ -30,7 +30,7 @@ docker service update --image ... (rolling update)
 ## Configuracao inicial
 
 ### 1. Domínio
-O compose esta configurado para `renegociacao.belfortcontabilidade.com.br`. Se quiser outro, edite a label `traefik.http.routers.renegociacaotributaria.rule` no `docker-compose.yml` e crie o DNS A correspondente.
+O compose esta configurado para `transacaotributaria.automacaogrupobelfort.com.br`. Crie o DNS A apontando para o IP do servidor. Se quiser outro dominio, edite a label `traefik.http.routers.renegociacaotributaria.rule` no `docker-compose.yml`.
 
 ### 2. Imagem no GHCR
 Apos o primeiro workflow concluir, em https://github.com/belfortcontabilidade?tab=packages abra o pacote `renegociacaotributaria` → Package settings → Change visibility → **Public**.

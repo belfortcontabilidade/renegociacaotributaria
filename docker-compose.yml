@@ -25,7 +25,7 @@ services:
 
         ## Traefik
         - traefik.enable=true
-        - traefik.http.routers.renegociacaotributaria.rule=Host(`renegociacao.belfortcontabilidade.com.br`) ## Url publica do site
+        - traefik.http.routers.renegociacaotributaria.rule=Host(`transacaotributaria.automacaogrupobelfort.com.br`) ## Url publica do site
         - traefik.http.routers.renegociacaotributaria.entrypoints=websecure
         - traefik.http.routers.renegociacaotributaria.priority=10
         - traefik.http.routers.renegociacaotributaria.tls.certresolver=letsencryptresolver
