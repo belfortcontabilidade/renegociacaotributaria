@@ -1,0 +1,7 @@
+services:
+  web:
+    image: ghcr.io/belfortcontabilidade/renegociacaotributaria:latest
+    container_name: renegociacaotributaria
+    restart: unless-stopped
+    ports:
+      - "8080:80"
