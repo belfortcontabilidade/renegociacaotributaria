@@ -58,8 +58,8 @@
         "resource": "leads",
         "operation": "getAll",
         "options": {
-          "search": "={{ $('Normalizar Payload').item.json.email }}",
-          "take": 1,
+          "search": "={{ ($('Normalizar Payload').item.json.phone || '').replace(/\\D/g, '') }}",
+          "take": 20,
           "skip": 0
         }
       },
@@ -79,7 +79,7 @@
     {
       "parameters": {
         "language": "javaScript",
-        "jsCode": "// Consolida o leadId vindo de duas origens possiveis:\n// 1) Resposta de POST /leads (criacao bem-sucedida) -> $json.id\n// 2) Resposta de GET /leads?search=email (lead ja existia) -> $json.data[0].id\n\nconst input = $input.first().json;\n\nlet leadId = input.id || input.data?.id;\n\nif (!leadId) {\n  const lista = Array.isArray(input)\n    ? input\n    : (input.data || input.items || input.results || []);\n  if (Array.isArray(lista) && lista.length > 0) {\n    leadId = lista[0]?.id;\n  }\n}\n\nif (!leadId) {\n  throw new Error('Nao foi possivel resolver o leadId. Resposta recebida: ' + JSON.stringify(input));\n}\n\nreturn [{ json: { leadId, fonte: input.id ? 'criado' : 'existente' } }];\n"
+        "jsCode": "// Consolida o leadId vindo de duas origens possiveis:\n// 1) Resposta de POST /leads (criacao bem-sucedida): { id, ... }\n// 2) Resposta de GET /leads?search=... (lead ja existia): { count, data: [...] }\n\nconst input = $input.first().json;\n\n// Caso 1 - criacao bem-sucedida (resposta tem id direto)\nif (input.id) {\n  return [{ json: { leadId: input.id, fonte: 'criado' } }];\n}\n\n// Caso 2 - resposta de busca: filtrar por correspondencia EXATA de telefone ou email\nconst lista = Array.isArray(input)\n  ? input\n  : (input.data || input.items || input.results || []);\n\nconst digits = (s) => (s || '').toString().replace(/\\D/g, '');\nconst lower  = (s) => (s || '').toString().toLowerCase().trim();\n\nconst targetEmail = lower($('Normalizar Payload').item.json.email);\nconst targetPhone = digits($('Normalizar Payload').item.json.phone);\n\nconst match = (Array.isArray(lista) ? lista : []).find((lead) => {\n  return lower(lead.email) === targetEmail || digits(lead.phone) === targetPhone;\n});\n\nif (!match || !match.id) {\n  throw new Error(\n    'Lead duplicado detectado mas nao foi possivel localizar via busca. ' +\n    'Telefone alvo: ' + targetPhone + '. Email alvo: ' + targetEmail + '. ' +\n    'Total na resposta: ' + (Array.isArray(lista) ? lista.length : 0) + '. ' +\n    'Resposta bruta: ' + JSON.stringify(input)\n  );\n}\n\nreturn [{\n  json: {\n    leadId: match.id,\n    fonte: 'existente',\n    matchedBy: lower(match.email) === targetEmail ? 'email' : 'phone',\n  },\n}];\n"
       },
       "id": "f8a2c1e0-9999-4a09-9b00-aaaaaaaaaaa9",
       "name": "Resolver leadId",
